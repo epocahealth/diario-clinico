@@ -1597,13 +1597,12 @@ function renderPatList(){
 }
 async function reloadFromSupabase(){
   setSyncStatus('syncing','Caricamento...');
-  // Try to refresh session first
-  const {data:{session}} = await sb.auth.getSession();
-  if(session?.user){
-    currentUser = session.user;
+  // Try to refresh token
+  if(refreshToken) await refreshAccessToken();
+  if(currentUser){
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('userBadge').style.display='flex';
-    const name = session.user.user_metadata?.display_name || session.user.email.split('@')[0];
+    const name = currentUser.user_metadata?.display_name || currentUser.email.split('@')[0];
     document.getElementById('userAvatar').textContent = name.substring(0,2).toUpperCase();
     document.getElementById('userNameLabel').textContent = name;
   }
@@ -3217,54 +3216,7 @@ window.addEventListener('focus', async ()=>{
   }
 });
 
-// Check if already logged in (session persists)
-sb.auth.getSession().then(({data:{session}})=>{
-  if(!session){
-    // No session — show login screen
-    document.getElementById('loginScreen').classList.remove('hidden');
-    setSyncStatus('err','Non connesso');
-  } else {
-    setupRealtime();
-  }
-});
-
-// Retry: if after 4 seconds still no data, force reload
-setTimeout(async ()=>{
-  if(currentUser && state.patients.length===0){
-    setSyncStatus('syncing','Ricaricamento...');
-    await loadData();
-    renderPatList();
-    renderMain('visits');
-  } else if(!currentUser){
-    const {data:{session}} = await sb.auth.getSession();
-    if(session?.user){
-      currentUser = session.user;
-      const name = session.user.user_metadata?.display_name || session.user.email.split('@')[0];
-      document.getElementById('loginScreen').classList.add('hidden');
-      document.getElementById('userBadge').style.display='flex';
-      document.getElementById('userAvatar').textContent = name.substring(0,2).toUpperCase();
-      document.getElementById('userNameLabel').textContent = name;
-      setSyncStatus('syncing','Caricamento...');
-      await loadData();
-      renderPatList();
-      renderMain('visits');
-    } else {
-      // Still no session after 4s — show login
-      document.getElementById('loginScreen').classList.remove('hidden');
-      setSyncStatus('err','Sessione scaduta');
-    }
-  }
-}, 4000);
-
-// If app is open but no data after 6s, force logout and show login
-setTimeout(async ()=>{
-  if(state.patients.length===0){
-    await sb.auth.signOut();
-    currentUser = null;
-    document.getElementById('loginScreen').classList.remove('hidden');
-    setSyncStatus('err','Accedi per continuare');
-  }
-}, 6000);
+// Session handled by IIFE above
 
 
 // =====================================================================
