@@ -3373,7 +3373,13 @@ function openQuestionnaire(key, pid, date){
   else if(key==='scd')    html = renderLikertForm('scd', 'SCD-Q — Declino cognitivo soggettivo', SCD_QUESTIONS, SCD_OPTS, qState.scd||[], 'Risponda Sì o No a ciascuna affermazione:');
   else if(key==='phenoage') html = renderPhenoAgeForm(qState.phenoage||{});
 
-  document.getElementById('qModalArea').innerHTML = `
+  let modalArea = document.getElementById('qModalArea');
+  if(!modalArea){
+    modalArea = document.createElement('div');
+    modalArea.id = 'qModalArea';
+    document.body.appendChild(modalArea);
+  }
+  modalArea.innerHTML = `
     <div class="q-modal-overlay" onclick="if(event.target===this)closeQModal()">
       <div class="q-modal">
         <button class="q-modal-close" onclick="closeQModal()">✕</button>
