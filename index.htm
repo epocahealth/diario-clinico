@@ -1554,8 +1554,7 @@ document.addEventListener('visibilitychange', async ()=>{
 
 function getPat(){return state.patients.find(p=>p.id===state.selectedPatient);}
 function getSess(pid,date){const p=state.patients.find(x=>x.id===pid);if(!p)return null;if(!p.sessions)p.sessions={};return p.sessions[date]||null;}
-function setSess(pid,date,data){const p=state.patients.find(x=>x.id===pid);if(!p)return;if(!p.sessions)p.sessions={};p.sessions[date]=data;saveData();}
-
+function getPat(){return state.patients.find(p=>p.id===state.selectedPatient);}
 // =====================================================================
 // TAB SWITCHING
 // =====================================================================
