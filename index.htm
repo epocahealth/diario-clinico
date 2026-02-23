@@ -1426,10 +1426,11 @@ async function setSess(pid, date, data){
       referti: data.referti||[], saved_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
-    // Try upsert via POST with resolution
+    // Check if session exists
     const existing = await sbFetch('GET', '/sessions', null, {
       'patient_id': 'eq.'+pid, 'session_date': 'eq.'+date, 'select':'id'
     });
+    console.log('setSess existing:', existing, 'for', pid, date);
     if(existing && existing.length){
       await sbFetch('PATCH', '/sessions', body, {'patient_id':'eq.'+pid,'session_date':'eq.'+date});
     } else {
@@ -1438,7 +1439,7 @@ async function setSess(pid, date, data){
     setSyncStatus('ok','Salvato ✓');
     setTimeout(()=>setSyncStatus('ok','Connesso'),2000);
   } catch(err){
-    console.error('setSess error:', err);
+    console.error('setSess error:', err.message);
     setSyncStatus('err','Errore salvataggio');
     showToast('⚠️ Errore salvataggio — dati in locale','warning');
   }
