@@ -2167,22 +2167,51 @@ function renderSessionRow(pat,date,mode){
   const s=pat.sessions[date];
   const prods=s.products||[];
   const painNrs=s.pain&&s.pain.nrs!==undefined?s.pain.nrs:null;
-  const longevityScore=s.longevity&&s.longevity.readiness!==undefined?s.longevity.readiness:null;
-  return `<div class="history-item">
+  const longevityScore=s.longevity&&s.longevity.readiness!==undefined?Math.round(s.longevity.readiness):null;
+  const qs=s.questionari||{};
+  const qKeys=Object.keys(qs).filter(k=>qs[k]&&qs[k].scores);
+
+  // Questionnaire badges
+  const qBadges=qKeys.map(k=>{
+    const sc=qs[k].scores;
+    let label='', color='#e8f5e9', textColor='#2e7d32';
+    switch(k){
+      case 'phq9':   label=`PHQ-9: ${sc.total} (${sc.severity})`; if(sc.total>=10){color='#fff3e0';textColor='#e65100';} if(sc.total>=15){color='#ffebee';textColor='#c62828';} break;
+      case 'gad7':   label=`GAD-7: ${sc.total} (${sc.severity})`; if(sc.total>=10){color='#fff3e0';textColor='#e65100';} if(sc.total>=15){color='#ffebee';textColor='#c62828';} break;
+      case 'dass21': label=`DASS-21: D${sc.D}/A${sc.A}/S${sc.S}`; color='#f3e5f5';textColor='#6a1b9a'; break;
+      case 'midas':  label=`MIDAS: ${sc.total} (${sc.grade})`; color='#e3f2fd';textColor='#1565c0'; break;
+      case 'hit6':   label=`HIT-6: ${sc.total} (${sc.impact})`; if(sc.total>=60){color='#ffebee';textColor='#c62828';} break;
+      case 'dhi':    label=`DHI: ${sc.total} (${sc.severity})`; color='#e8eaf6';textColor='#283593'; break;
+      case 'abc':    label=`ABC: ${sc.avg}%`; color='#e0f7fa';textColor='#006064'; break;
+      case 'pcs':    label=`PCS: ${sc.total}${sc.clinical?' ⚠️':''}`; if(sc.clinical){color='#ffebee';textColor='#c62828';} break;
+      case 'csi':    label=`CSI: ${sc.total} (${sc.level})`; if(sc.total>=40){color='#fff3e0';textColor='#e65100';} break;
+      case 'msis29': label=`MSIS-29: F${sc.physPct} P${sc.psycPct}`; color='#f3e5f5';textColor='#6a1b9a'; break;
+      case 'scd':    label=`SCD-Q: ${sc.total}${sc.concern?' ⚠️':''}`; color='#e8f5e9';textColor='#2e7d32'; break;
+      case 'sf36':   label=`SF-36: PF${sc.PF??'—'}/MH${sc.MH??'—'}`; color='#e3f2fd';textColor='#1565c0'; break;
+      case 'phenoage': label=`PhenoAge: ${sc.phenoAge}y (gap ${sc.accel>0?'+':''}${sc.accel})`; if(sc.accel>5){color='#ffebee';textColor='#c62828';} else if(sc.accel>0){color='#fff3e0';textColor='#e65100';} break;
+      default: label=k.toUpperCase();
+    }
+    return `<span class="badge" style="background:${color};color:${textColor};border:1px solid ${textColor}33;cursor:pointer;" onclick="event.stopPropagation();openQuestionnaire('${k}','${pat.id}','${date}')">📝 ${label}</span>`;
+  }).join('');
+
+  const clickHandler = `changeDate('${date}')`;
+
+  return `<div class="history-item" style="cursor:pointer;" onclick="${clickHandler}">
     <div class="history-date">${fmtDate(date)}</div>
     <div class="history-content">
       <div class="history-badges">
         ${s.gae?'<span class="badge badge-gae">💉 GAE</span>':''}
         ${s.flebo?'<span class="badge badge-flebo">🩸 Flebo</span>':''}
         ${s.pae?'<span class="badge badge-pae">🔬 PAE</span>':''}
-        ${painNrs!==null?`<span class="badge badge-pain">🔴 Dolore: ${painNrs}/10</span>`:''}
+        ${painNrs!==null?`<span class="badge badge-pain">🔴 NRS: ${painNrs}/10</span>`:''}
         ${longevityScore!==null?`<span class="badge" style="background:#f0edf7;color:var(--purple);border:1px solid var(--purple)">🧬 LTS: ${longevityScore}</span>`:''}
         ${prods.slice(0,mode==='mini'?3:100).map(p=>`<span class="badge badge-prod">${p}</span>`).join('')}
         ${mode==='mini'&&prods.length>3?`<span class="badge badge-prod">+${prods.length-3}</span>`:''}
+        ${qBadges}
       </div>
       ${s.notes?`<div class="history-notes">"${s.notes.substring(0,100)}${s.notes.length>100?'…':''}"</div>`:''}
     </div>
-    <button class="history-del" onclick="deleteSess('${pat.id}','${date}')">🗑</button>
+    <button class="history-del" onclick="event.stopPropagation();deleteSess('${pat.id}','${date}')">🗑</button>
   </div>`;
 }
 
