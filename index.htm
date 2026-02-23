@@ -3773,32 +3773,165 @@ function openVisitDetail(patId, date){
   const qs = s.questionari||{};
   const qKeys = Object.keys(qs).filter(k=>qs[k]&&qs[k].scores);
 
-  const qDetails = qKeys.map(k=>{
-    const sc = qs[k].scores;
-    let detail = '';
-    switch(k){
-      case 'phq9':   detail=`Totale: <b>${sc.total}/27</b> — ${sc.severity}`; break;
-      case 'gad7':   detail=`Totale: <b>${sc.total}/21</b> — ${sc.severity}`; break;
-      case 'dass21': detail=`Depressione: <b>${sc.D}</b> (${sc.sevD}) · Ansia: <b>${sc.A}</b> (${sc.sevA}) · Stress: <b>${sc.S}</b> (${sc.sevS})`; break;
-      case 'midas':  detail=`Totale: <b>${sc.total}</b> — Grado ${sc.grade}`; break;
-      case 'hit6':   detail=`Totale: <b>${sc.total}/78</b> — ${sc.impact}`; break;
-      case 'dhi':    detail=`Totale: <b>${sc.total}/100</b> (${sc.severity}) · Fisica: ${sc.P} · Funzionale: ${sc.F} · Emotiva: ${sc.E}`; break;
-      case 'abc':    detail=`Media: <b>${sc.avg}%</b> — ${sc.risk}`; break;
-      case 'pcs':    detail=`Totale: <b>${sc.total}/52</b>${sc.clinical?' ⚠️ Clinicamente significativo':''} · Rum: ${sc.R} · Imp: ${sc.I} · Mag: ${sc.M}`; break;
-      case 'csi':    detail=`Totale: <b>${sc.total}/100</b> — ${sc.level}`; break;
-      case 'msis29': detail=`Fisico: <b>${sc.physPct}%</b> · Psicologico: <b>${sc.psycPct}%</b>`; break;
-      case 'scd':    detail=`Totale: <b>${sc.total}/21</b>${sc.concern?' ⚠️ SCD concern':''}`; break;
-      case 'sf36':   detail=`PF:${sc.PF??'—'} RP:${sc.RP??'—'} RE:${sc.RE??'—'} VT:${sc.VT??'—'} MH:${sc.MH??'—'} SF:${sc.SF??'—'} BP:${sc.BP??'—'} GH:${sc.GH??'—'}`; break;
-      case 'phenoage': detail=`Età biologica: <b>${sc.phenoAge} anni</b> · Gap: ${sc.accel>0?'+':''}${sc.accel} anni · Mortalità 10y: ${sc.mortality}%`; break;
-      default: detail = JSON.stringify(sc);
-    }
-    const names = {phq9:'PHQ-9 Depressione',gad7:'GAD-7 Ansia',dass21:'DASS-21',midas:'MIDAS Emicrania',hit6:'HIT-6 Cefalea',dhi:'DHI Vertigini',abc:'ABC Scale',pcs:'PCS Catastrofizzazione',csi:'CSI Sensibilizzazione',msis29:'MSIS-29 SM',scd:'SCD-Q Cognitivo',sf36:'SF-36',phenoage:'PhenoAge'};
-    return `<div style="padding:10px 0;border-bottom:1px solid #f0f0f0;">
-      <div style="font-size:.75rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;">${names[k]||k}</div>
-      <div style="font-size:.9rem;color:#333;margin-top:3px;">${detail}</div>
-      <button onclick="closeVisitDetail();openQuestionnaire('${k}','${patId}','${date}')" style="margin-top:6px;font-size:.75rem;padding:3px 10px;border-radius:5px;border:1px solid #ddd;background:white;cursor:pointer;color:#555;">📝 Rivedi risposte</button>
+  function section(title, content){
+    return `<div style="margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #f0f0f0;">
+      <div style="font-size:.72rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;">${title}</div>
+      ${content}
     </div>`;
-  }).join('');
+  }
+
+  function row(label, value){
+    return `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:.87rem;">
+      <span style="color:#666;">${label}</span>
+      <span style="color:#222;font-weight:600;">${value}</span>
+    </div>`;
+  }
+
+  let sections = '';
+
+  // Trattamenti
+  if(s.gae||s.flebo||s.pae){
+    const badges = [
+      s.gae?'<span style="background:#e3f2fd;color:#1565c0;padding:5px 14px;border-radius:20px;font-size:.85rem;font-weight:600;">💉 GAE</span>':'',
+      s.flebo?'<span style="background:#e8f5e9;color:#2e7d32;padding:5px 14px;border-radius:20px;font-size:.85rem;font-weight:600;">🩸 Flebo</span>':'',
+      s.pae?'<span style="background:#f3e5f5;color:#6a1b9a;padding:5px 14px;border-radius:20px;font-size:.85rem;font-weight:600;">🔬 PAE</span>':''
+    ].filter(Boolean).join(' ');
+    sections += section('Trattamenti', `<div style="display:flex;gap:8px;flex-wrap:wrap;">${badges}</div>`);
+  }
+
+  // Prodotti
+  if(prods.length){
+    const pills = prods.map(p=>`<span style="background:#f5f5f5;color:#333;padding:4px 11px;border-radius:12px;font-size:.82rem;">${p}</span>`).join(' ');
+    sections += section('Prodotti in flebo', `<div style="display:flex;gap:6px;flex-wrap:wrap;">${pills}</div>`);
+  }
+
+  // Dolore
+  if(pain.nrs!==undefined){
+    let painContent = '';
+    painContent += row('NRS Intensità', `${pain.nrs}/10`);
+    if(pain.painActivity!==undefined) painContent += row('Interferenza attività', `${pain.painActivity}/10`);
+    if(pain.painMood!==undefined) painContent += row('Interferenza umore', `${pain.painMood}/10`);
+    if(pain.painWork!==undefined) painContent += row('Interferenza lavoro', `${pain.painWork}/10`);
+    if(pain.painRelations!==undefined) painContent += row('Interferenza relazioni', `${pain.painRelations}/10`);
+    if(pain.painSleep!==undefined) painContent += row('Interferenza sonno', `${pain.painSleep}/10`);
+    if(pain.painLifeEnjoy!==undefined) painContent += row('Interferenza benessere', `${pain.painLifeEnjoy}/10`);
+    if((pain.qualities||[]).length) painContent += row('Qualità dolore', pain.qualities.join(', '));
+    if((pain.timings||[]).length) painContent += row('Andamento temporale', pain.timings.join(', '));
+    if((pain.locations||[]).length) painContent += row('Localizzazione', pain.locations.join(', '));
+    sections += section('🔴 Scala del Dolore', painContent);
+  }
+
+  // Longevity
+  if(lv.readiness!==undefined){
+    let lvContent = '';
+    lvContent += row('Readiness Score', `${Math.round(lv.readiness)}/100`);
+    if(lv.agingGap!==undefined) lvContent += row('Aging Gap', `${Math.round(lv.agingGap)}%`);
+    const domainNames = {energy:'Energia',physical:'Funzione fisica',sleep:'Sonno',stress:'Stress/Recupero',movement:'Movimento',clinical:'Carico clinico'};
+    const domainKeys = ['energy','physical','sleep','stress','movement','clinical'];
+    domainKeys.forEach(d=>{if(lv['score_'+d]!==undefined) lvContent += row(domainNames[d]||d, `${Math.round(lv['score_'+d])}/100`);});
+    sections += section('🧬 Longevity Screening', lvContent);
+  }
+
+  // Questionari
+  if(qKeys.length){
+    const qNames = {phq9:'PHQ-9 Depressione',gad7:'GAD-7 Ansia',dass21:'DASS-21',midas:'MIDAS Emicrania',hit6:'HIT-6 Cefalea',dhi:'DHI Vertigini',abc:'ABC Scale',pcs:'PCS Catastrofizzazione',csi:'CSI Sensibilizzazione',msis29:'MSIS-29 SM',scd:'SCD-Q Cognitivo',sf36:'SF-36 Qualità della vita',phenoage:'PhenoAge'};
+
+    qKeys.forEach(k=>{
+      const sc = qs[k].scores;
+      const resp = qs[k].responses||{};
+      let qContent = '';
+
+      switch(k){
+        case 'phq9':
+          qContent += row('Totale', `${sc.total}/27`);
+          qContent += row('Severità', sc.severity);
+          if(Array.isArray(resp)) PHQ9_QUESTIONS.forEach((q,i)=>{
+            if(resp[i]!==undefined) qContent += row(q.substring(0,50)+'…', PHQ9_OPTS[resp[i]]||resp[i]);
+          });
+          break;
+        case 'gad7':
+          qContent += row('Totale', `${sc.total}/21`);
+          qContent += row('Severità', sc.severity);
+          if(Array.isArray(resp)) GAD7_QUESTIONS.forEach((q,i)=>{
+            if(resp[i]!==undefined) qContent += row(q.substring(0,50)+'…', GAD7_OPTS[resp[i]]||resp[i]);
+          });
+          break;
+        case 'dass21':
+          qContent += row('Depressione', `${sc.D} (${sc.sevD})`);
+          qContent += row('Ansia', `${sc.A} (${sc.sevA})`);
+          qContent += row('Stress', `${sc.S} (${sc.sevS})`);
+          break;
+        case 'midas':
+          qContent += row('Totale giorni', sc.total);
+          qContent += row('Grado disabilità', sc.grade);
+          if(Array.isArray(resp)) MIDAS_QUESTIONS.forEach((q,i)=>{
+            if(resp[i]!==undefined&&resp[i]!=='') qContent += row(q.label.substring(0,50), `${resp[i]} giorni`);
+          });
+          break;
+        case 'hit6':
+          qContent += row('Totale', `${sc.total}/78`);
+          qContent += row('Impatto', sc.impact);
+          if(Array.isArray(resp)) HIT6_QUESTIONS.forEach((q,i)=>{
+            if(resp[i]!==undefined) qContent += row(q.substring(0,50)+'…', HIT6_OPTS[resp[i]]||resp[i]);
+          });
+          break;
+        case 'dhi':
+          qContent += row('Totale', `${sc.total}/100 (${sc.severity})`);
+          qContent += row('Fisica', sc.P); qContent += row('Funzionale', sc.F); qContent += row('Emotiva', sc.E);
+          break;
+        case 'abc':
+          qContent += row('Media', `${sc.avg}%`);
+          qContent += row('Rischio caduta', sc.risk);
+          if(Array.isArray(resp)) ABC_QUESTIONS.forEach((q,i)=>{
+            if(resp[i]!==undefined) qContent += row(q.substring(0,50)+'…', `${resp[i]}%`);
+          });
+          break;
+        case 'pcs':
+          qContent += row('Totale', `${sc.total}/52${sc.clinical?' ⚠️':''}`);
+          qContent += row('Ruminazione', sc.R); qContent += row('Impotenza', sc.I); qContent += row('Magnificazione', sc.M);
+          break;
+        case 'csi':
+          qContent += row('Totale', `${sc.total}/100`);
+          qContent += row('Livello', sc.level);
+          break;
+        case 'msis29':
+          qContent += row('Fisico', `${sc.physPct}%`);
+          qContent += row('Psicologico', `${sc.psycPct}%`);
+          break;
+        case 'scd':
+          qContent += row('Totale', `${sc.total}/21`);
+          qContent += row('SCD Concern', sc.concern?'Sì ⚠️':'No');
+          break;
+        case 'sf36':
+          ['PF','RP','RE','VT','MH','SF','BP','GH'].forEach(d=>{
+            if(sc[d]!==undefined) qContent += row(d, `${sc[d]}/100`);
+          });
+          break;
+        case 'phenoage':
+          qContent += row('Età anagrafica', `${resp.age} anni`);
+          qContent += row('Età biologica', `${sc.phenoAge} anni`);
+          qContent += row('Gap biologico', `${sc.accel>0?'+':''}${sc.accel} anni`);
+          qContent += row('Mortalità 10 anni', `${sc.mortality}%`);
+          if(resp.albumin_gdl) qContent += row('Albumina', `${resp.albumin_gdl} g/dL`);
+          if(resp.creatinine_mgdl) qContent += row('Creatinina', `${resp.creatinine_mgdl} mg/dL`);
+          if(resp.glucose_mgdl) qContent += row('Glucosio', `${resp.glucose_mgdl} mg/dL`);
+          if(resp.crp_mgl) qContent += row('PCR', `${resp.crp_mgl} mg/L`);
+          if(resp.lymph_pct) qContent += row('Linfociti %', `${resp.lymph_pct}%`);
+          if(resp.mcv_fl) qContent += row('MCV', `${resp.mcv_fl} fL`);
+          if(resp.rdw_pct) qContent += row('RDW', `${resp.rdw_pct}%`);
+          if(resp.alkphos_ul) qContent += row('Fosfatasi alc.', `${resp.alkphos_ul} U/L`);
+          if(resp.wbc_k) qContent += row('WBC', `${resp.wbc_k} 10³/µL`);
+          break;
+      }
+
+      sections += section(`📝 ${qNames[k]||k}`, qContent);
+    });
+  }
+
+  // Note
+  if(s.notes){
+    sections += section('Note visita', `<div style="font-size:.88rem;color:#444;line-height:1.6;background:#f9f9f9;padding:12px 14px;border-radius:8px;">${s.notes}</div>`);
+  }
 
   const html = `
     <div style="background:linear-gradient(135deg,#1a1f4e,#2d3561);color:white;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;">
@@ -3809,50 +3942,7 @@ function openVisitDetail(patId, date){
       <button onclick="closeVisitDetail()" style="background:rgba(255,255,255,.15);border:none;color:white;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:1.1rem;">✕</button>
     </div>
     <div style="padding:20px 24px;">
-
-      ${(s.gae||s.flebo||s.pae)?`
-      <div style="margin-bottom:18px;">
-        <div style="font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Trattamenti</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          ${s.gae?'<span style="background:#e3f2fd;color:#1565c0;padding:5px 12px;border-radius:20px;font-size:.85rem;font-weight:600;">💉 GAE</span>':''}
-          ${s.flebo?'<span style="background:#e8f5e9;color:#2e7d32;padding:5px 12px;border-radius:20px;font-size:.85rem;font-weight:600;">🩸 Flebo</span>':''}
-          ${s.pae?'<span style="background:#f3e5f5;color:#6a1b9a;padding:5px 12px;border-radius:20px;font-size:.85rem;font-weight:600;">🔬 PAE</span>':''}
-        </div>
-      </div>`:''}
-
-      ${prods.length?`
-      <div style="margin-bottom:18px;">
-        <div style="font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Prodotti in flebo</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">
-          ${prods.map(p=>`<span style="background:#f5f5f5;color:#333;padding:4px 10px;border-radius:12px;font-size:.82rem;">${p}</span>`).join('')}
-        </div>
-      </div>`:''}
-
-      ${pain.nrs!==undefined?`
-      <div style="margin-bottom:18px;">
-        <div style="font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Dolore</div>
-        <div style="font-size:.9rem;color:#333;">NRS: <b>${pain.nrs}/10</b>${pain.painActivity!==undefined?` · Attività: ${pain.painActivity}`:''}</div>
-        ${(pain.qualities||[]).length?`<div style="font-size:.82rem;color:#666;margin-top:4px;">Qualità: ${pain.qualities.join(', ')}</div>`:''}
-      </div>`:''}
-
-      ${lv.readiness!==undefined?`
-      <div style="margin-bottom:18px;">
-        <div style="font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Longevity Score</div>
-        <div style="font-size:.9rem;color:#333;">Readiness: <b>${Math.round(lv.readiness)}/100</b>${lv.agingGap!==undefined?` · Aging Gap: ${Math.round(lv.agingGap)}%`:''}</div>
-      </div>`:''}
-
-      ${qKeys.length?`
-      <div style="margin-bottom:18px;">
-        <div style="font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Questionari (${qKeys.length})</div>
-        ${qDetails}
-      </div>`:''}
-
-      ${s.notes?`
-      <div style="margin-bottom:18px;">
-        <div style="font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Note</div>
-        <div style="font-size:.88rem;color:#444;line-height:1.5;background:#f9f9f9;padding:10px 14px;border-radius:8px;">${s.notes}</div>
-      </div>`:''}
-
+      ${sections||'<p style="color:#999;text-align:center;">Nessun dato registrato per questa visita.</p>'}
       <div style="display:flex;gap:10px;margin-top:8px;">
         <button onclick="closeVisitDetail();changeDate('${date}');switchTab('visits')" style="flex:1;padding:10px;border-radius:8px;border:none;background:#1a1f4e;color:white;cursor:pointer;font-size:.88rem;font-weight:600;">✏️ Modifica visita</button>
         <button onclick="closeVisitDetail()" style="padding:10px 16px;border-radius:8px;border:1px solid #ddd;background:white;cursor:pointer;font-size:.88rem;">Chiudi</button>
