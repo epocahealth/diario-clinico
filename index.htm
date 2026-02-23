@@ -2194,7 +2194,7 @@ function renderSessionRow(pat,date,mode){
     return `<span class="badge" style="background:${color};color:${textColor};border:1px solid ${textColor}33;cursor:pointer;" onclick="event.stopPropagation();openQuestionnaire('${k}','${pat.id}','${date}')">📝 ${label}</span>`;
   }).join('');
 
-  const clickHandler = `changeDate('${date}');switchTab('visits')`;
+  const clickHandler = `openVisitDetail('${pat.id}','${date}')`;
 
   return `<div class="history-item" style="cursor:pointer;" onclick="${clickHandler}">
     <div class="history-date">${fmtDate(date)}</div>
@@ -3754,6 +3754,121 @@ function previewReferto(idx, pid, date){
 }
 
 
+// =====================================================================
+// VISIT DETAIL MODAL
+// =====================================================================
+function openVisitDetail(patId, date){
+  const pat = state.patients.find(p=>p.id===patId);
+  if(!pat) return;
+  const s = pat.sessions[date]||{};
+  const prods = s.products||[];
+  const pain = s.pain||{};
+  const lv = s.longevity||{};
+  const qs = s.questionari||{};
+  const qKeys = Object.keys(qs).filter(k=>qs[k]&&qs[k].scores);
+
+  const qDetails = qKeys.map(k=>{
+    const sc = qs[k].scores;
+    let detail = '';
+    switch(k){
+      case 'phq9':   detail=`Totale: <b>${sc.total}/27</b> — ${sc.severity}`; break;
+      case 'gad7':   detail=`Totale: <b>${sc.total}/21</b> — ${sc.severity}`; break;
+      case 'dass21': detail=`Depressione: <b>${sc.D}</b> (${sc.sevD}) · Ansia: <b>${sc.A}</b> (${sc.sevA}) · Stress: <b>${sc.S}</b> (${sc.sevS})`; break;
+      case 'midas':  detail=`Totale: <b>${sc.total}</b> — Grado ${sc.grade}`; break;
+      case 'hit6':   detail=`Totale: <b>${sc.total}/78</b> — ${sc.impact}`; break;
+      case 'dhi':    detail=`Totale: <b>${sc.total}/100</b> (${sc.severity}) · Fisica: ${sc.P} · Funzionale: ${sc.F} · Emotiva: ${sc.E}`; break;
+      case 'abc':    detail=`Media: <b>${sc.avg}%</b> — ${sc.risk}`; break;
+      case 'pcs':    detail=`Totale: <b>${sc.total}/52</b>${sc.clinical?' ⚠️ Clinicamente significativo':''} · Rum: ${sc.R} · Imp: ${sc.I} · Mag: ${sc.M}`; break;
+      case 'csi':    detail=`Totale: <b>${sc.total}/100</b> — ${sc.level}`; break;
+      case 'msis29': detail=`Fisico: <b>${sc.physPct}%</b> · Psicologico: <b>${sc.psycPct}%</b>`; break;
+      case 'scd':    detail=`Totale: <b>${sc.total}/21</b>${sc.concern?' ⚠️ SCD concern':''}`; break;
+      case 'sf36':   detail=`PF:${sc.PF??'—'} RP:${sc.RP??'—'} RE:${sc.RE??'—'} VT:${sc.VT??'—'} MH:${sc.MH??'—'} SF:${sc.SF??'—'} BP:${sc.BP??'—'} GH:${sc.GH??'—'}`; break;
+      case 'phenoage': detail=`Età biologica: <b>${sc.phenoAge} anni</b> · Gap: ${sc.accel>0?'+':''}${sc.accel} anni · Mortalità 10y: ${sc.mortality}%`; break;
+      default: detail = JSON.stringify(sc);
+    }
+    const names = {phq9:'PHQ-9 Depressione',gad7:'GAD-7 Ansia',dass21:'DASS-21',midas:'MIDAS Emicrania',hit6:'HIT-6 Cefalea',dhi:'DHI Vertigini',abc:'ABC Scale',pcs:'PCS Catastrofizzazione',csi:'CSI Sensibilizzazione',msis29:'MSIS-29 SM',scd:'SCD-Q Cognitivo',sf36:'SF-36',phenoage:'PhenoAge'};
+    return `<div style="padding:10px 0;border-bottom:1px solid #f0f0f0;">
+      <div style="font-size:.75rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;">${names[k]||k}</div>
+      <div style="font-size:.9rem;color:#333;margin-top:3px;">${detail}</div>
+      <button onclick="closeVisitDetail();openQuestionnaire('${k}','${patId}','${date}')" style="margin-top:6px;font-size:.75rem;padding:3px 10px;border-radius:5px;border:1px solid #ddd;background:white;cursor:pointer;color:#555;">📝 Rivedi risposte</button>
+    </div>`;
+  }).join('');
+
+  const html = `
+    <div style="background:linear-gradient(135deg,#1a1f4e,#2d3561);color:white;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-size:.8rem;opacity:.7;margin-bottom:2px;">${pat.name}</div>
+        <div style="font-size:1.3rem;font-weight:700;">${fmtDate(date)}</div>
+      </div>
+      <button onclick="closeVisitDetail()" style="background:rgba(255,255,255,.15);border:none;color:white;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:1.1rem;">✕</button>
+    </div>
+    <div style="padding:20px 24px;">
+
+      ${(s.gae||s.flebo||s.pae)?`
+      <div style="margin-bottom:18px;">
+        <div style="font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Trattamenti</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${s.gae?'<span style="background:#e3f2fd;color:#1565c0;padding:5px 12px;border-radius:20px;font-size:.85rem;font-weight:600;">💉 GAE</span>':''}
+          ${s.flebo?'<span style="background:#e8f5e9;color:#2e7d32;padding:5px 12px;border-radius:20px;font-size:.85rem;font-weight:600;">🩸 Flebo</span>':''}
+          ${s.pae?'<span style="background:#f3e5f5;color:#6a1b9a;padding:5px 12px;border-radius:20px;font-size:.85rem;font-weight:600;">🔬 PAE</span>':''}
+        </div>
+      </div>`:''}
+
+      ${prods.length?`
+      <div style="margin-bottom:18px;">
+        <div style="font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Prodotti in flebo</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${prods.map(p=>`<span style="background:#f5f5f5;color:#333;padding:4px 10px;border-radius:12px;font-size:.82rem;">${p}</span>`).join('')}
+        </div>
+      </div>`:''}
+
+      ${pain.nrs!==undefined?`
+      <div style="margin-bottom:18px;">
+        <div style="font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Dolore</div>
+        <div style="font-size:.9rem;color:#333;">NRS: <b>${pain.nrs}/10</b>${pain.painActivity!==undefined?` · Attività: ${pain.painActivity}`:''}</div>
+        ${(pain.qualities||[]).length?`<div style="font-size:.82rem;color:#666;margin-top:4px;">Qualità: ${pain.qualities.join(', ')}</div>`:''}
+      </div>`:''}
+
+      ${lv.readiness!==undefined?`
+      <div style="margin-bottom:18px;">
+        <div style="font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Longevity Score</div>
+        <div style="font-size:.9rem;color:#333;">Readiness: <b>${Math.round(lv.readiness)}/100</b>${lv.agingGap!==undefined?` · Aging Gap: ${Math.round(lv.agingGap)}%`:''}</div>
+      </div>`:''}
+
+      ${qKeys.length?`
+      <div style="margin-bottom:18px;">
+        <div style="font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Questionari (${qKeys.length})</div>
+        ${qDetails}
+      </div>`:''}
+
+      ${s.notes?`
+      <div style="margin-bottom:18px;">
+        <div style="font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Note</div>
+        <div style="font-size:.88rem;color:#444;line-height:1.5;background:#f9f9f9;padding:10px 14px;border-radius:8px;">${s.notes}</div>
+      </div>`:''}
+
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button onclick="closeVisitDetail();changeDate('${date}');switchTab('visits')" style="flex:1;padding:10px;border-radius:8px;border:none;background:#1a1f4e;color:white;cursor:pointer;font-size:.88rem;font-weight:600;">✏️ Modifica visita</button>
+        <button onclick="closeVisitDetail()" style="padding:10px 16px;border-radius:8px;border:1px solid #ddd;background:white;cursor:pointer;font-size:.88rem;">Chiudi</button>
+      </div>
+    </div>`;
+
+  document.getElementById('visitDetailContent').innerHTML = html;
+  document.getElementById('visitDetailModal').style.display = 'block';
+}
+
+function closeVisitDetail(){
+  document.getElementById('visitDetailModal').style.display = 'none';
+}
+
 </script>
+
+<!-- Visit Detail Modal -->
+<div id="visitDetailModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:8000;overflow-y:auto;padding:20px;" onclick="if(event.target===this)closeVisitDetail()">
+  <div style="background:white;border-radius:16px;max-width:680px;margin:0 auto;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+    <div id="visitDetailContent"></div>
+  </div>
+</div>
+
 </body>
 </html>
