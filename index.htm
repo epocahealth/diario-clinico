@@ -2196,7 +2196,7 @@ function renderSessionRow(pat,date,mode){
 
   const clickHandler = `changeDate('${date}');switchTab('visits')`;
 
-  return `<div class="history-item" style="cursor:pointer;" onclick="${clickHandler}">`
+  return `<div class="history-item" style="cursor:pointer;" onclick="${clickHandler}">
     <div class="history-date">${fmtDate(date)}</div>
     <div class="history-content">
       <div class="history-badges">
