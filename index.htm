@@ -1317,6 +1317,16 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('loginEmail')?.addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('loginPassword').focus();});
 });
 
+// =====================================================================
+// SYNC STATUS
+// =====================================================================
+function setSyncStatus(type, label){
+  const dot = document.getElementById('syncDot');
+  const lbl = document.getElementById('syncLabel');
+  dot.className = 'sync-dot '+(type==='ok'?'ok':type==='syncing'?'syncing':'err');
+  lbl.textContent = label;
+}
+
 // ── Init: restore session on page load ───────────────────────────────
 (async ()=>{
   if(loadSession()){
@@ -1333,16 +1343,6 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('loginScreen').classList.remove('hidden');
   setSyncStatus('err','Accedi per continuare');
 })();
-
-// =====================================================================
-// SYNC STATUS
-// =====================================================================
-function setSyncStatus(type, label){
-  const dot = document.getElementById('syncDot');
-  const lbl = document.getElementById('syncLabel');
-  dot.className = 'sync-dot '+(type==='ok'?'ok':type==='syncing'?'syncing':'err');
-  lbl.textContent = label;
-}
 
 // =====================================================================
 // DATA LAYER — REST API diretta
